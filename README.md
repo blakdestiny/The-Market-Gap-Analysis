@@ -1,146 +1,36 @@
-# Project Brief: The "Sugar Trap" Market Gap Analysis
+The Sugar Trap - Market Gap Analysis
 
-**Client:** Helix CPG Partners (Strategic Food & Beverage Consultancy)  
-**Deliverable:** Interactive Dashboard, Code Notebook & Insight Presentation
+Open Food Facts · Helix CPG Partners · a "Blue Ocean" study for healthy snacking
 
----
+ A. Executive Summary
 
-## 1. Business Context
-**Helix CPG Partners** advises major food manufacturers on new product development. Our newest client, a global snack manufacturer, wants to launch a "Healthy Snacking" line. They believe the market is oversaturated with sugary treats, but they lack the data to prove where the specific gaps are.
+Analysis of the Open Food Facts snack category dataset reveals a clear market gap: Chocolate/Candy and Cookies/Biscuits are the two largest snack categories by volume, yet fewer than 8% of products in either fall into the "High Protein + Low Sugar" quadrant. The gap is validated independently by Nutri-Score data, where this quadrant scores an A rating at roughly 4x the rate of any other quadrant. We recommend a Chocolate/Candy product targeting "10g protein and under 8g sugar per 100g"; a profile already achieved by ~7,300 existing "winner" products in the dataset, most commonly built on soy, oat, or milk protein rather than whey isolate. This represents a high-volume, low-competition opportunity aligned with both consumer demand and independent nutrition scoring.
 
-They have hired us to answer one question: **"Where is the 'Blue Ocean' in the snack aisle?"**
+ B. Project Links
 
-Specifically, they are looking for product categories that are currently under-served—areas where consumer demand for health (e.g., High Protein, High Fiber) is not being met by current product offerings (which are mostly High Sugar, High Fat).
+- Link to Notebook: https://colab.research.google.com/drive/1lvmSm5BbHwV5Z36xWZqMgTFuQQ_7nm0U#scrollTo=vWVP7lN4LlId
+- Link to Dashboard: https://colab.research.google.com/drive/1lvmSm5BbHwV5Z36xWZqMgTFuQQ_7nm0U#scrollTo=vWVP7lN4LlId&fullscreenOutput=true [https://colab.research.google.com/drive/1lvmSm5BbHwV5Z36xWZqMgTFuQQ_7nm0U#scrollTo=o9wnoVgceOZB&fullscreenOutput=true],
+- Link to Presentation: [ADD SLIDE DECK LINK] 
 
-## 2. The Data
-You will use the **Open Food Facts** dataset, a free, open, and massive database of food products from around the world.
+ C. Technical Explanation
 
-* **Source:** [Open Food Facts Data](https://world.openfoodfacts.org/data)
-* **Format:** CSV (Comma Separated Values)
-* **Warning:** The full dataset is massive (over 3GB). You are **not** expected to process the entire file. You should filter the data early or work with a manageable subset (e.g., the first 500,000 rows or specific categories).
+ Data Cleaning
+The raw Open Food Facts export (~12.6GB uncompressed) was streamed in 100,000-row chunks directly from the gzipped source, filtering each chunk to snack-relevant categories (`snack`, `biscuit`, `cookie`, `chip`, `cracker`, `bar`, `chocolate`, `cereal`, `candy`) before ever holding the full dataset in memory. From there:
 
-## 3. Tooling Requirements
-You have the flexibility to choose your development environment:
+- Rows missing `product_name`, `sugars_100g`, or `proteins_100g` were dropped rather than imputed, since guessing macro values would bias the clustering the whole analysis depends on.
+- Nutrient columns were coerced to numeric with `pd.to_numeric(errors="coerce")`, since a handful of non-numeric entries in the source data were silently forcing entire columns to `object` dtype.
+- Per-100g values were bounded to a biologically plausible 0–100g range; anything outside that is a data-entry error, not a real product.
+- `fat_100g` nulls were filled with 0 rather than dropped, since fat isn't one of the two core analysis axes (sugar/protein) and dropping on it would cost rows for no analytical benefit.
+- Exact duplicate products (same name + same macros) were removed.
 
-* **Option A (Recommended):** Use a cloud-hosted notebook like **Google Colab**, or **Deepnote**, etc.
-* **Option B:** Use a local **Jupyter Notebook** or **VS Code**.
-    * *Condition:* If you choose this, you must ensure your code is reproducible. Do not reference local file paths (e.g., `C:/Downloads/...`). Assume the dataset is in the same folder as your notebook.
-* **Dashboarding:** The final output must be a **publicly accessible link** (e.g., Tableau Public, Google Looker Studio, Streamlit Cloud, or PowerBI Web).
+ Category Wrangler
+`categories_tags` was keyword-matched (in priority order, most-specific first) into 7 high-level buckets; Bars, Chips/Crisps, Crackers, Cookies/Biscuits, Chocolate/Candy, Nuts/Seeds, Cereal/Granola — plus an "Other" catch-all for anything unmatched.
 
----
+ Nutrient Matrix & Gap Identification
+Products were split into four quadrants using the dataset-wide median sugar and protein values as cutoffs (not a fixed nutrition-science standard — this threshold choice is called out here for transparency). Cross-tabulating category against quadrant showed Chocolate/Candy and Cookies/Biscuits; the two highest-volume categories; with the lowest share of products in the "High Protein + Low Sugar" quadrant (7.7% and 5.5% respectively), while smaller categories like Cereal/Granola and Nuts/Seeds were already saturated with healthy options (~68–70% share). High volume + low healthy-share is the definition of the gap used here.
 
-## 4. User Stories & Acceptance Criteria
+ Candidate's Choice: Nutri-Score Cross-Validation
+Since sugar and protein alone don't capture everything a consumer or regulator considers "healthy," the identified gap quadrant was cross-referenced against Nutri-Score; an independent, industry-standard rating already present in the source data but unused elsewhere in this analysis. This was added because it answers the obvious follow-up question a client would ask: "healthy by whose definition?" The result validated the approach: products in the High Protein + Low Sugar quadrant earned an A rating 23.5% of the time; roughly 4x the rate of any other quadrant; and an E rating only 9.6% of the time, versus 55–71% in the sugar-heavy quadrants. Notably, ~32% of products in this quadrant still scored D or E, indicating protein and sugar targets alone won't guarantee a top Nutri-Score; other factors like saturated fat and additives will need attention during formulation.
 
-### Story 1: Data Ingestion & "The Clean Up"
-**As a** Strategy Director,  
-**I want** a clean dataset that removes products with erroneous nutritional information,  
-**So that** my analysis is not skewed by bad data entry.
-
-* **Acceptance Criteria:**
-    * Handle missing values: Decide what to do with rows that have `null` or empty `sugars_100g`, `proteins_100g`, or `product_name`.
-    * Handle outliers: Filter out biologically impossible values.
-    * **Deliverable:** A cleaned Pandas DataFrame or SQL table export.
-
-### Story 2: The Category Wrangler
-**As a** Product Manager,  
-**I want** to group products into readable high-level categories,  
-**So that** I don't have to look at 10,000 unique, messy tags like `en:chocolate-chip-cookies-with-nuts`.
-
-* **Acceptance Criteria:**
-    * The `categories_tags` column is a comma-separated string (e.g., `en:snacks, en:sweet-snacks, en:biscuits`). You must parse this string.
-    * Create a logic to assign a "Primary Category" to each product based on keywords.
-    * Create at least 5 distinct high-level buckets.
-
-### Story 3: The "Nutrient Matrix" Visualization
-**As a** Marketing Lead,  
-**I want** to see a Scatter Plot comparing Sugar (X-axis) vs. Protein (Y-axis) for different categories,  
-**So that** I can visually spot where the products are clustered.
-
-* **Acceptance Criteria:**
-    * Create a dashboard (PowerBI, Tableau, Streamlit, or Python-based charts) displaying this relationship.
-    * Allow the user to filter the chart by the "High Level Categories" you created in Story 2.
-    * **Key Visual:** Identify the "Empty Quadrant" (e.g., High Protein + Low Sugar).
-
-### Story 4: The Recommendation
-**As a** Client,  
-**I want** a clear text recommendation on what product we should build,  
-**So that** I can take this to the R&D team.
-
-* **Acceptance Criteria:**
-    * On the dashboard, include a "Key Insight" box.
-    * Complete this sentence: *"Based on the data, the biggest market opportunity is in [Category Name], specifically targeting products with [X]g of protein and less than [Y]g of sugar."*
-
----
-
-## 5. Bonus User Story: The "Hidden Gem"
-**As a** Health Conscious Consumer,  
-**I want** to know which specific ingredients are driving the high protein content in the "good" products,  
-**So that** I can replicate this in our new recipe.
-
-* **Acceptance Criteria:**
-    * Analyze the `ingredients_text` column for products in your "High Protein" cluster.
-    * Extract and list the Top 3 most common protein sources (e.g., "Whey", "Peanuts", "Soy").
-
----
-
-## 6. The "Candidate's Choice" Challenge
-**As a** Creative Analyst,  
-**I want** to add one additional feature or analysis to this project that I believe provides massive value,  
-**So that** I can show off my business acumen.
-
-* **Instructions:**
-    * Add one more chart, filter, or metric that wasn't asked for.
-    * Explain **why** you added it.
-    * **There is no wrong answer, but you must justify your choice.**
-
----
-
-## 7. Submission Guidelines
-Please edit this `README.md` file in your forked repository to include the following three sections at the top:
-
-### A. The Executive Summary
-* A 3-5 sentence summary of your findings.
-
-### B. Project Links
-* **Link to Notebook:** (e.g., Google Colab, etc.). *Ensure sharing permissions are set to "Anyone with the link can view".*
-* **Link to Dashboard:** (e.g., Tableau Public / Power BI Web, etc.).
-* **Link to Presentation:** A link to a short slide deck (PDF, PPT) AND (Optional) a 2-minute video walkthrough (YouTube) explaining your results.
-
-### C. Technical Explanation
-* Briefly explain how you handled the "Data Cleaning".
-* Explain your "Candidate's Choice" addition.
-
-**Important Note on Code Submission:**
-* Upload your `.ipynb` notebook file to the repo.
-* **Crucial:** Also upload an **HTML or PDF export** of your notebook so we can see your charts even if GitHub fails to render the notebook code.
-* Once you are ready, please fill out the [Official Submission Form Here](https://forms.office.com/e/heitZ9PP7y) with your links
-
----
-
-## 🛑 CRITICAL: Pre-Submission Checklist
-
-**Before you submit your form, you MUST complete this checklist.**
-
-> ⚠️ **WARNING:** If you miss any of these items, your submission will be flagged as "Incomplete" and you will **NOT** be invited to an interview. 
->
-> **We do not accept "permission error" excuses. Test your links in Incognito Mode.**
-
-### 1. Repository & Code Checks
-- [ ] **My GitHub Repo is Public.** (Open the link in a Private/Incognito window to verify).
-- [ ] **I have uploaded the `.ipynb` notebook file.**
-- [ ] **I have ALSO uploaded an HTML or PDF export** of the notebook.
-- [ ] **I have NOT uploaded the massive raw dataset.** (Use `.gitignore` or just don't commit the CSV).
-- [ ] **My code uses Relative Paths.** 
-
-### 2. Deliverable Checks
-- [ ] **My Dashboard link is publicly accessible.** (No login required).
-- [ ] **My Presentation link is publicly accessible.** (Permissions set to "Anyone with the link can view").
-- [ ] **I have updated this `README.md` file** with my Executive Summary and technical notes.
-
-### 3. Completeness
-- [ ] I have completed **User Stories 1-4**.
-- [ ] I have completed the **"Candidate's Choice"** challenge and explained it in the README.
-
-**✅ Only when you have checked every box above, proceed to the submission form.**
-
----
+ Bonus: Hidden Gem Ingredient Analysis
+Ingredient text for all high-protein products was keyword-matched against common protein sources. The three most common were "Soy (12.9% of products)", "Oats (6.6%)", and "Milk Protein (3.2%)"; suggesting a plant-forward or dairy-adjacent formulation, rather than pure whey isolate, is both common and commercially viable in this space, offering a realistic ingredient path for the recommended Chocolate/Candy product.
