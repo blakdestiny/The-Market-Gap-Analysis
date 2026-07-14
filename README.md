@@ -10,7 +10,8 @@ Analysis of the Open Food Facts snack category dataset reveals a clear market ga
 
  Link to Notebook: https://colab.research.google.com/drive/1lvmSm5BbHwV5Z36xWZqMgTFuQQ_7nm0U#scrollTo=vWVP7lN4LlId
  Link to Dashboard: https://colab.research.google.com/drive/1lvmSm5BbHwV5Z36xWZqMgTFuQQ_7nm0U#scrollTo=vWVP7lN4LlId&fullscreenOutput=true [https://colab.research.google.com/drive/1lvmSm5BbHwV5Z36xWZqMgTFuQQ_7nm0U#scrollTo=o9wnoVgceOZB&fullscreenOutput=true]
- Link to Presentation:
+ Link to Presentation: 
+ 
  C. Technical Explanation
 
  Data Cleaning
